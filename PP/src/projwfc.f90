@@ -1135,7 +1135,7 @@ SUBROUTINE projwave( filproj, filowdin, lsym, diag_basis, lwrite_ovp )
   USE pw_restart_new,ONLY : read_collected_wfc
   USE wavefunctions, ONLY : evc
   !
-  USE projections, ONLY: nlmchi, fill_nlmchi, proj, proj_aux, ovps_aux
+  USE projections, ONLY: nlmchi, fill_nlmchi, proj, proj_aux, ovps_aux, proj1_aux
   !
   USE io_files,  ONLY: nd_nmbr, nwordatwfc
   USE mp,        ONLY: mp_bcast
@@ -1156,7 +1156,7 @@ SUBROUTINE projwave( filproj, filowdin, lsym, diag_basis, lwrite_ovp )
   INTEGER :: npw, npw_, ik, ibnd, i, j, k, na, nb, nt, isym, n,  m, l, nwfc,&
        lmax_wfc, is
   REAL(DP),    ALLOCATABLE :: e (:)
-  COMPLEX(DP), ALLOCATABLE :: wfcatom (:,:), proj0(:,:)
+  COMPLEX(DP), ALLOCATABLE :: wfcatom (:,:), proj0(:,:), proj1(:,:)
   COMPLEX(DP), ALLOCATABLE :: e_work_d(:,:)
   ! Some workspace for gamma-point calculation ...
   REAL   (DP), ALLOCATABLE :: rproj0(:,:)
@@ -1263,6 +1263,9 @@ SUBROUTINE projwave( filproj, filowdin, lsym, diag_basis, lwrite_ovp )
      ELSE
         CALL atomic_wfc (ik, wfcatom)
      ENDIF
+     ! output projection on primitive atomic wfcs
+     ALLOCATE( proj1(natomwfc,nbnd) )
+     CALL calbec ( npol*npwx, wfcatom, evc, proj1)
      !
      CALL allocate_bec_type (nkb, natomwfc, becp )
      !
@@ -1396,6 +1399,7 @@ SUBROUTINE projwave( filproj, filowdin, lsym, diag_basis, lwrite_ovp )
         ALLOCATE( proj0(natomwfc,nbnd) )
         CALL calbec ( npw_, wfcatom, evc, proj0)
         IF (ionode_pool) WRITE( iunaux ) proj0
+        IF (ionode_pool) WRITE( iunaux ) proj1
         IF (lsym) THEN
            IF ( lspinorb ) THEN 
               CALL sym_proj_so ( domag, proj0, proj(:,:,ik) )
@@ -1408,6 +1412,7 @@ SUBROUTINE projwave( filproj, filowdin, lsym, diag_basis, lwrite_ovp )
            proj(:,:,ik)=abs(proj0(:,:))**2
         END IF
         DEALLOCATE (proj0)
+        DEALLOCATE (proj1)
         !
      ENDIF
      !
@@ -1488,7 +1493,9 @@ SUBROUTINE projwave( filproj, filowdin, lsym, diag_basis, lwrite_ovp )
         ALLOCATE( ovps_aux(1, 1, 1) )
      ENDIF
      ALLOCATE( proj_aux (natomwfc, nbnd, nkstot) )
+     ALLOCATE( proj1_aux (natomwfc, nbnd, nkstot) )
      proj_aux = (0.d0, 0.d0)
+     proj1_aux = (0.d0, 0.d0)
      !
      DO ik = 1, nks
         !
@@ -1500,6 +1507,7 @@ SUBROUTINE projwave( filproj, filowdin, lsym, diag_basis, lwrite_ovp )
            DEALLOCATE ( rproj0 )
         ELSE
            READ( iunaux ) proj_aux(:,:,ik)
+           READ( iunaux ) proj1_aux(:,:,ik)
         ENDIF
         !
      ENDDO
@@ -1508,9 +1516,11 @@ SUBROUTINE projwave( filproj, filowdin, lsym, diag_basis, lwrite_ovp )
      !
   ELSE
      ALLOCATE( proj_aux (1,1,1) )
+     ALLOCATE( proj1_aux (1,1,1) )
   END IF
   !
   CALL poolrecover (proj_aux, 2 * nbnd * natomwfc, nkstot, nks)
+  CALL poolrecover (proj1_aux, 2 * nbnd * natomwfc, nkstot, nks)
   IF ( lwrite_ovp ) &
       CALL poolrecover (ovps_aux, 2 * natomwfc * natomwfc, nkstot, nks)
   !
@@ -1520,10 +1530,12 @@ SUBROUTINE projwave( filproj, filowdin, lsym, diag_basis, lwrite_ovp )
      !
      CALL write_xml_proj( "atomic_proj.xml", proj_aux, lwrite_ovp, &
           ovps_aux )
+     CALL write_xml_proj( "atomic_proj1.xml", proj1_aux, lwrite_ovp, &
+          ovps_aux )
      !
   ENDIF
   !
-  IF ( ionode_pool ) DEALLOCATE( proj_aux, ovps_aux )
+  IF ( ionode_pool ) DEALLOCATE( proj_aux, ovps_aux, proj1_aux )
   CALL laxlib_end()
   !
   RETURN

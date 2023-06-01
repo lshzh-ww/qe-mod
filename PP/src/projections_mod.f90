@@ -16,7 +16,7 @@ MODULE projections
   TYPE(wfc_label), ALLOCATABLE :: nlmchi(:)
   
   REAL (DP),    ALLOCATABLE :: proj (:,:,:)
-  COMPLEX (DP), ALLOCATABLE :: proj_aux (:,:,:)
+  COMPLEX (DP), ALLOCATABLE :: proj_aux (:,:,:), proj1_aux (:,:,:)
   COMPLEX (DP), ALLOCATABLE :: ovps_aux (:,:,:)
   
   CONTAINS

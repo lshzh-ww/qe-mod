@@ -239,7 +239,7 @@ PROGRAM wfck2r
         dist_evc_r(1:dffts%nnr,:)=evc_r(1:dffts%nnr,:)
 #endif
 
-        if (ionode .and. .not. loctave) call davcio (dist_evc_r, lrwfcr, iuwfcr, (ik-1)*nbnd+ibnd, +1)
+        if (ionode .and. .not. loctave) call davcio (dist_evc_r, lrwfcr, iuwfcr, 1, +1)
         if (ionode .and. loctave) then
            do i3 = 1, dffts%nr3x, nevery(3)
            do i2 = 1, dffts%nr2x, nevery(2)
